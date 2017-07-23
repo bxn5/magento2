@@ -15,6 +15,7 @@ use Magento\InventoryApi\Api\Data\SourceInterface;
 use Magento\InventoryApi\Api\Data\SourceItemInterface;
 use Magento\InventoryApi\Api\Data\SourceCarrierLinkInterface;
 use Magento\InventoryApi\Api\Data\StockInterface;
+use Magento\InventoryApi\Api\Data\StockItemInterface;
 
 /**
  * @codeCoverageIgnore
@@ -41,6 +42,11 @@ class InstallSchema implements InstallSchemaInterface
      * Constant for table name of \Magento\Inventory\Model\StockSourceLink
      */
     const TABLE_NAME_STOCK_SOURCE_LINK = 'inventory_source_stock_link';
+
+    /**
+     * Constant for table name of
+     */
+    const TABLE_NAME_STOCK_ITEM_INDEX = 'inventory_stock_item_index';
 
     /**
      * Constant for decimal precision for latitude and longitude
@@ -80,6 +86,7 @@ class InstallSchema implements InstallSchemaInterface
 
         $setup->getConnection()->createTable($this->createStockTable($setup));
         $setup->getConnection()->createTable($this->createStockSourceLinkTable($setup));
+        $setup->getConnection()->createTable($this->createStockItemIndexTable($setup));
 
         $setup->endSetup();
     }
@@ -540,5 +547,66 @@ class InstallSchema implements InstallSchemaInterface
 //            AdapterInterface::FK_ACTION_CASCADE
 //        )
             ;
+    }
+
+    /**
+     * @param SchemaSetupInterface $setup
+     * @return Table
+     */
+    private function createStockItemIndexTable(SchemaSetupInterface $setup)
+    {
+        $sourceItemTable = $setup->getTable(InstallSchema::TABLE_NAME_STOCK_ITEM_INDEX);
+        return $setup->getConnection()->newTable(
+            $sourceItemTable
+        )->setComment(
+            'Inventory Stock item Table'
+        )->addColumn(
+            'stock_item_id',
+            Table::TYPE_INTEGER,
+            null,
+            [
+                InstallSchema::OPTION_IDENTITY => true,
+                InstallSchema::OPTION_UNSIGNED => true,
+                InstallSchema::OPTION_NULLABLE => false,
+                InstallSchema::OPTION_PRIMARY => true,
+            ],
+            'Stock Item ID'
+        )->addColumn(
+            StockItemInterface::STOCK_ID,
+            Table::TYPE_INTEGER,
+            null,
+            [
+                InstallSchema::OPTION_UNSIGNED => true,
+                InstallSchema::OPTION_NULLABLE => false,
+            ],
+            'Stock ID'
+        )->addColumn(
+            StockItemInterface::SKU,
+            Table::TYPE_TEXT,
+            64,
+            [
+                InstallSchema::OPTION_NULLABLE => false,
+            ],
+            'Sku'
+        )->addColumn(
+            StockItemInterface::QUANTITY,
+            Table::TYPE_DECIMAL,
+            null,
+            [
+                InstallSchema::OPTION_UNSIGNED => false,
+                InstallSchema::OPTION_NULLABLE => false,
+                InstallSchema::OPTION_DEFAULT => 0,
+            ],
+            'Quantity'
+        )->addColumn(
+            StockItemInterface::STATUS,
+            Table::TYPE_SMALLINT,
+            null,
+            [
+                InstallSchema::OPTION_NULLABLE => true,
+                InstallSchema::OPTION_UNSIGNED => true,
+            ],
+            'Status'
+        );
     }
 }
