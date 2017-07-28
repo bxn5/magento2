@@ -5,21 +5,13 @@
  */
 namespace Magento\Inventory\Model;
 
-use Magento\Framework\Api\SearchCriteria\CollectionProcessorInterface;
-use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SearchCriteriaInterface;
-use Magento\Framework\Exception\CouldNotDeleteException;
-use Magento\Framework\Exception\CouldNotSaveException;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Inventory\Model\ResourceModel\Stock as StockResourceModel;
-use Magento\Inventory\Model\ResourceModel\Stock\Collection;
-use Magento\Inventory\Model\ResourceModel\Stock\CollectionFactory;
+use Magento\Inventory\Model\Stock\Command\DeleteByIdInterface;
+use Magento\Inventory\Model\Stock\Command\GetInterface;
+use Magento\Inventory\Model\Stock\Command\GetListInterface;
+use Magento\Inventory\Model\Stock\Command\SaveInterface;
 use Magento\InventoryApi\Api\Data\StockInterface;
-use Magento\InventoryApi\Api\Data\StockInterfaceFactory;
-use Magento\InventoryApi\Api\Data\StockSearchResultsInterface;
-use Magento\InventoryApi\Api\Data\StockSearchResultsInterfaceFactory;
 use Magento\InventoryApi\Api\StockRepositoryInterface;
-use Psr\Log\LoggerInterface;
 
 /**
  * @inheritdoc
@@ -27,67 +19,41 @@ use Psr\Log\LoggerInterface;
 class StockRepository implements StockRepositoryInterface
 {
     /**
-     * @var StockResourceModel
+     * @var SaveInterface
      */
-    private $stockResource;
+    private $commandSave;
 
     /**
-     * @var StockInterfaceFactory
+     * @var GetInterface
      */
-    private $stockFactory;
+    private $commandGet;
 
     /**
-     * @var CollectionProcessorInterface
+     * @var DeleteByIdInterface
      */
-    private $collectionProcessor;
+    private $commandDeleteById;
 
     /**
-     * @var CollectionFactory
+     * @var GetListInterface
      */
-    private $stockCollectionFactory;
+    private $commandGetList;
 
     /**
-     * @var StockSearchResultsInterfaceFactory
-     */
-    private $stockSearchResultsFactory;
-
-    /**
-     * @var SearchCriteriaBuilder
-     */
-    private $searchCriteriaBuilder;
-
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * SourceRepository constructor
-     *
-     * @param StockResourceModel $stockResource
-     * @param StockInterfaceFactory $stockFactory
-     * @param CollectionProcessorInterface $collectionProcessor
-     * @param CollectionFactory $stockCollectionFactory
-     * @param StockSearchResultsInterfaceFactory $stockSearchResultsFactory
-     * @param SearchCriteriaBuilder $searchCriteriaBuilder
-     * @param LoggerInterface $logger
+     * @param SaveInterface $commandSave
+     * @param GetInterface $commandGet
+     * @param DeleteByIdInterface $commandDeleteById
+     * @param GetListInterface $commandGetList
      */
     public function __construct(
-        StockResourceModel $stockResource,
-        StockInterfaceFactory $stockFactory,
-        CollectionProcessorInterface $collectionProcessor,
-        CollectionFactory $stockCollectionFactory,
-        StockSearchResultsInterfaceFactory $stockSearchResultsFactory,
-        SearchCriteriaBuilder $searchCriteriaBuilder,
-        LoggerInterface $logger
+        SaveInterface $commandSave,
+        GetInterface $commandGet,
+        DeleteByIdInterface $commandDeleteById,
+        GetListInterface $commandGetList
     ) {
-        $this->stockResource = $stockResource;
-        $this->stockFactory = $stockFactory;
-        $this->collectionProcessor = $collectionProcessor;
-        $this->stockCollectionFactory = $stockCollectionFactory;
-        $this->stockSearchResultsFactory = $stockSearchResultsFactory;
-        $this->searchCriteriaBuilder = $searchCriteriaBuilder;
-        $this->logger = $logger;
+        $this->commandSave = $commandSave;
+        $this->commandGet = $commandGet;
+        $this->commandDeleteById = $commandDeleteById;
+        $this->commandGetList = $commandGetList;
     }
 
     /**
@@ -95,13 +61,7 @@ class StockRepository implements StockRepositoryInterface
      */
     public function save(StockInterface $stock)
     {
-        try {
-            $this->stockResource->save($stock);
-            return $stock->getStockId();
-        } catch (\Exception $e) {
-            $this->logger->error($e->getMessage());
-            throw new CouldNotSaveException(__('Could not save Stock'), $e);
-        }
+        return $this->commandSave->execute($stock);
     }
 
     /**
@@ -109,13 +69,7 @@ class StockRepository implements StockRepositoryInterface
      */
     public function get($stockId)
     {
-        $stock = $this->stockFactory->create();
-        $this->stockResource->load($stock, $stockId, StockInterface::STOCK_ID);
-
-        if (null === $stock->getStockId()) {
-            throw NoSuchEntityException::singleField(StockInterface::STOCK_ID, $stockId);
-        }
-        return $stock;
+        return $this->commandGet->execute($stockId);
     }
 
     /**
@@ -123,15 +77,7 @@ class StockRepository implements StockRepositoryInterface
      */
     public function deleteById($stockId)
     {
-        $stockItem = $this->get($stockId);
-
-        try {
-            $this->stockResource->delete($stockItem);
-        } catch (\Exception $e) {
-            $this->logger->error($e->getMessage());
-            throw new CouldNotDeleteException(__('Could not delete Stock'), $e);
-        }
-
+        $this->commandDeleteById->execute($stockId);
     }
 
     /**
@@ -139,20 +85,6 @@ class StockRepository implements StockRepositoryInterface
      */
     public function getList(SearchCriteriaInterface $searchCriteria = null)
     {
-        /** @var Collection $collection */
-        $collection = $this->stockCollectionFactory->create();
-
-        if (null === $searchCriteria) {
-            $searchCriteria = $this->searchCriteriaBuilder->create();
-        } else {
-            $this->collectionProcessor->process($searchCriteria, $collection);
-        }
-
-        /** @var StockSearchResultsInterface $searchResult */
-        $searchResult = $this->stockSearchResultsFactory->create();
-        $searchResult->setItems($collection->getItems());
-        $searchResult->setTotalCount($collection->getSize());
-        $searchResult->setSearchCriteria($searchCriteria);
-        return $searchResult;
+        return $this->commandGetList->execute($searchCriteria);
     }
 }

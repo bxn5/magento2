@@ -11,6 +11,7 @@ use Magento\Backend\App\Action\Context;
 use Magento\Framework\Api\DataObjectHelper;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\InventoryApi\Api\Data\StockInterface;
 use Magento\InventoryApi\Api\Data\StockInterfaceFactory;
@@ -50,20 +51,20 @@ class Save extends Action
      * @param Context $context
      * @param StockInterfaceFactory $stockFactory
      * @param StockRepositoryInterface $stockRepository
-     * @param DataObjectHelper $dataObjectHelper
+     * @param DataObjectHelper $sourceHydrator
      * @param StockSourceLinkProcessor $stockSourceLinkProcessor
      */
     public function __construct(
         Context $context,
         StockInterfaceFactory $stockFactory,
         StockRepositoryInterface $stockRepository,
-        DataObjectHelper $dataObjectHelper,
+        DataObjectHelper $sourceHydrator,
         StockSourceLinkProcessor $stockSourceLinkProcessor
     ) {
         parent::__construct($context);
         $this->stockFactory = $stockFactory;
         $this->stockRepository = $stockRepository;
-        $this->dataObjectHelper = $dataObjectHelper;
+        $this->dataObjectHelper = $sourceHydrator;
         $this->stockSourceLinkProcessor = $stockSourceLinkProcessor;
     }
 
@@ -76,9 +77,7 @@ class Save extends Action
         $requestData = $this->getRequest()->getParams();
         if ($this->getRequest()->isPost() && !empty($requestData['general'])) {
             try {
-                $stockId = !empty($requestData['general'][StockInterface::STOCK_ID])
-                    ? $requestData['general'][StockInterface::STOCK_ID] : null;
-
+                $stockId = $requestData['general'][StockInterface::STOCK_ID] ?? null;
                 $stockId = $this->processSave($stockId, $requestData);
 
                 $this->messageManager->addSuccessMessage(__('The Stock has been saved.'));
@@ -90,7 +89,11 @@ class Save extends Action
             } catch (CouldNotSaveException $e) {
                 $this->messageManager->addErrorMessage($e->getMessage());
                 $this->processRedirectAfterFailureSave($resultRedirect, $stockId);
+            } catch (InputException $e) {
+                $this->messageManager->addErrorMessage($e->getMessage());
+                $this->processRedirectAfterFailureSave($resultRedirect, $stockId);
             } catch (Exception $e) {
+                // TODO: wrong message if links has not loaded
                 $this->messageManager->addErrorMessage(__('Could not save stock.'));
                 $this->processRedirectAfterFailureSave($resultRedirect, $stockId);
             }

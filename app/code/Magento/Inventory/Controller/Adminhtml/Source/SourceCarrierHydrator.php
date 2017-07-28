@@ -13,9 +13,9 @@ use Magento\InventoryApi\Api\Data\SourceInterface;
 use Magento\Shipping\Model\Config;
 
 /**
- * Populate Source by carrier codes links
+ * Populate Source by carrier code links
  */
-class CarrierRequestDataHydrator
+class SourceCarrierHydrator
 {
     /**
      * @var SourceCarrierLinkInterface
@@ -35,8 +35,6 @@ class CarrierRequestDataHydrator
     private $shippingConfig;
 
     /**
-     * CarrierRequestDataHydrator constructor
-     *
      * @param SourceCarrierLinkInterfaceFactory $carrierLinkFactory
      * @param DataObjectHelper $dataObjectHelper
      * @param Config $shippingConfig

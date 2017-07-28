@@ -72,11 +72,11 @@ class GetAssignedSourcesForStock implements GetAssignedSourcesForStockInterface
      */
     public function execute($stockId)
     {
-        if (0 === (int)$stockId) {
-            throw new InputException(__('Input data is empty'));
+        if (!is_numeric($stockId)) {
+            throw new InputException(__('Input data is invalid'));
         }
         try {
-            $sourceIds = $this->getSourceIds($stockId);
+            $sourceIds = $this->getAssignedSourceIds($stockId);
 
             $searchCriteria = $this->searchCriteriaBuilder
                 ->addFilter(SourceInterface::SOURCE_ID, $sourceIds, 'in')
@@ -85,16 +85,15 @@ class GetAssignedSourcesForStock implements GetAssignedSourcesForStockInterface
             return $searchResult->getItems();
         } catch (\Exception $e) {
             $this->logger->error($e->getMessage());
-            // TODO:
             throw new LocalizedException(__('Could not load Sources for Stock'), $e);
         }
     }
 
     /**
-     * @param $stockId
-     * @return \Magento\Framework\DataObject[]
+     * @param int $stockId
+     * @return array
      */
-    private function getSourceIds($stockId)
+    private function getAssignedSourceIds($stockId)
     {
         $searchCriteria = $this->searchCriteriaBuilder
             ->addFilter(StockSourceLink::STOCK_ID, (int)$stockId)

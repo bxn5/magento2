@@ -15,7 +15,7 @@ use Magento\InventoryApi\Api\UnassignSourceFromStockInterface;
 
 /**
  * At the time of processing Stock save form this class used to save links correctly
- * Perform replace strategy of sources for the stock
+ * Performs replace strategy of sources for the stock
  */
 class StockSourceLinkProcessor
 {
@@ -73,36 +73,41 @@ class StockSourceLinkProcessor
      */
     public function process($stockId, array $stockSourceLinksData)
     {
+        $this->validateStockSourceData($stockSourceLinksData);
+
         $assignedSources = $this->getAssignedSourcesForStock->execute($stockId);
-        $sourceIdsForSave = array_column($stockSourceLinksData, StockSourceLink::SOURCE_ID);
+        $sourceIdsForSave = array_flip(array_column($stockSourceLinksData, StockSourceLink::SOURCE_ID));
         $sourceIdsForDelete = [];
 
         foreach ($assignedSources as $assignedSource) {
-            if (in_array($assignedSource->getSourceId(), $sourceIdsForSave)) {
+            if (array_key_exists($assignedSource->getSourceId(), $sourceIdsForSave)) {
                 unset($sourceIdsForSave[$assignedSource->getSourceId()]);
             } else {
                 $sourceIdsForDelete[] = $assignedSource->getSourceId();
             }
         }
 
-        if (!empty($sourceIdsForSave)) {
-            $this->assignSourcesToStock->execute($stockId, $sourceIdsForSave);
+        if ($sourceIdsForSave) {
+            $this->assignSourcesToStock->execute($stockId, array_keys($sourceIdsForSave));
         }
-        foreach ($sourceIdsForDelete as $sourceIdForDelete) {
-            $this->unassignSourceFromStock->execute($stockId, $sourceIdForDelete);
+        if ($sourceIdsForDelete) {
+            foreach ($sourceIdsForDelete as $sourceIdForDelete) {
+                $this->unassignSourceFromStock->execute($stockId, $sourceIdForDelete);
+            }
         }
     }
 
     /**
-     * TODO:
-     * @param array $stockSourceLinkData
+     * @param array $stockSourceLinksData
      * @return void
      * @throws InputException
      */
-    private function validateStockSourceData(array $stockSourceLinkData)
+    private function validateStockSourceData(array $stockSourceLinksData)
     {
-        if (!isset($stockSourceLinkData[StockSourceLink::SOURCE_ID])) {
-            throw new InputException(__('Wrong Stock to Source relation parameters given.'));
+        foreach ($stockSourceLinksData as $stockSourceLinkData) {
+            if (!isset($stockSourceLinkData[StockSourceLink::SOURCE_ID])) {
+                throw new InputException(__('Wrong Stock to Source relation parameters given.'));
+            }
         }
     }
 }
